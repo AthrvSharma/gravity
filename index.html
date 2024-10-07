@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.17.1/matter.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: white;
+            overflow: hidden;
+        }
+
+        #google {
+            position: absolute;
+            top: 100px;
+            width: 100%;
+            text-align: center;
+        }
+
+        #logo {
+            width: 270px;
+            position: absolute;
+        }
+
+        .search-bar {
+            position: absolute;
+            margin-top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .search-input {
+            padding: 10px;
+            width: 400px;
+            font-size: 18px;
+        }
+
+        .search-btn, .lucky-btn {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        #menu {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .menu-item {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            position: absolute;
+        }
+
+        .menu-item:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="google">
+        <img id="logo" src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" alt="Google Logo">
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="Google Search">
+            <button class="search-btn">Google Search</button>
+            <button class="lucky-btn">I'm Feeling Lucky</button>
+        </div>
+    </div>
+
+    <div id="menu">
+        <div class="menu-item" style="left: 10%;">+You</div>
+        <div class="menu-item" style="left: 20%;">Search</div>
+        <div class="menu-item" style="left: 30%;">Images</div>
+        <div class="menu-item" style="left: 40%;">Maps</div>
+        <div class="menu-item" style="left: 50%;">Play</div>
+        <div class="menu-item" style="left: 60%;">YouTube</div>
+        <div class="menu-item" style="left: 70%;">News</div>
+        <div class="menu-item" style="left: 80%;">Gmail</div>
+        <div class="menu-item" style="left: 90%;">Drive</div>
+        <div class="menu-item" style="left: 95%;">Calendar</div>
+    </div>
+
+    <script>
+        const { Engine, Render, World, Bodies, Mouse, MouseConstraint, Events } = Matter;
+
+        let engine = Engine.create();
+        let world = engine.world;
+
+        let render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: 'white'
+            }
+        });
+
+        Render.run(render);
+
+        function createBodyFromElement(element) {
+            let rect = element.getBoundingClientRect();
+            return Bodies.rectangle(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width, rect.height, {
+                restitution: 0.6,
+                isStatic: false
+            });
+        }
+
+        let logo = document.getElementById('logo');
+        let logoBody = createBodyFromElement(logo);
+        World.add(world, logoBody);
+
+        let searchBtn = document.querySelector('.search-btn');
+        let luckyBtn = document.querySelector('.lucky-btn');
+        let searchInput = document.querySelector('.search-input');
+
+        let searchBody = createBodyFromElement(searchBtn);
+        let luckyBody = createBodyFromElement(luckyBtn);
+        let inputBody = createBodyFromElement(searchInput);
+
+        World.add(world, [searchBody, luckyBody, inputBody]);
+
+        let menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => {
+            let itemBody = createBodyFromElement(item);
+            World.add(world, itemBody);
+        });
+
+        let ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight + 25, window.innerWidth, 50, { isStatic: true });
+        let ceiling = Bodies.rectangle(window.innerWidth / 2, -25, window.innerWidth, 50, { isStatic: true });
+        let leftWall = Bodies.rectangle(-25, window.innerHeight / 2, 50, window.innerHeight, { isStatic: true });
+        let rightWall = Bodies.rectangle(window.innerWidth + 25, window.innerHeight / 2, 50, window.innerHeight, { isStatic: true });
+
+        World.add(world, [ground, ceiling, leftWall, rightWall]);
+
+        Engine.run(engine);
+
+        let mouse = Mouse.create(render.canvas);
+        let mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: {
+                    visible: false
+                }
+            }
+        });
+
+        World.add(world, mouseConstraint);
+
+        function updateDomPositions() {
+            let elements = [
+                {element: logo, body: logoBody},
+                {element: searchBtn, body: searchBody},
+                {element: luckyBtn, body: luckyBody},
+                {element: searchInput, body: inputBody},
+            ];
+
+            menuItems.forEach((item, index) => {
+                elements.push({element: item, body: engine.world.bodies[4 + index]});
+            });
+
+            elements.forEach(({element, body}) => {
+                element.style.transform = `translate(${body.position.x - body.bounds.min.x}px, ${body.position.y - body.bounds.min.y}px) rotate(${body.angle}rad)`;
+            });
+        }
+
+        Events.on(engine, 'afterUpdate', updateDomPositions);
+
+        window.addEventListener('resize', () => {
+            render.options.width = window.innerWidth;
+            render.options.height = window.innerHeight;
+            Render.lookAt(render, {
+                min: { x: 0, y: 0 },
+                max: { x: window.innerWidth, y: window.innerHeight }
+            });
+        });
+    </script>
+</body>
+</html>
